@@ -14,7 +14,7 @@ struct tmp_ip{
 };
 
 void usage(void){
-	printf("syntax: send_arp <interface> <send ip> <target ip>");
+	printf("syntax: send_arp <interface> <send ip> <target ip>\n");
 }
 
 void print_mac(char * mac);
@@ -25,7 +25,7 @@ void send_fake_reply(
 	char * victim_ip,char * victim_mac,
 	char * send_ip, char * my_mac);
 
-char * mydev;
+char mydev[11]={};
 pcap_t * handler;
 
 int main(int argc, char * argv[]){
@@ -39,10 +39,12 @@ int main(int argc, char * argv[]){
 
 	char victim_ip[20];
 	char send_ip[20];
+
 	strncpy(victim_ip,argv[3],18);
 	strncpy(mydev,argv[1],10);
 	strncpy(send_ip,argv[2],18);
 
+	putchar(10);
 	printf("My Dev : %s\n", mydev);
 	printf("Victim's IP : %s\n", victim_ip);
 	printf("Send IP : %s\n",send_ip);
@@ -51,15 +53,14 @@ int main(int argc, char * argv[]){
 
 	if (pcap_findalldevs(
 			&alldevs,
-			NULL) != 0
-		)
+			NULL) != 0)
 	{
 		puts("pcap_findalldevs ERROR!");
 		exit(1);
 	}
 
-	char my_ip[20];
-	char my_mac[6];
+	char my_ip[20]={};
+	char my_mac[6]={};
 	int tmp=0;
 
 	for(pcap_if_t * i = alldevs; i != NULL; i=i->next){
@@ -105,6 +106,7 @@ int main(int argc, char * argv[]){
 		send_ip,
 		my_mac);
 
+	return 0;
 
 }
 
@@ -148,6 +150,7 @@ void send_fake_reply(
 	}
 
 	puts("Succefully sent Fake ARP Reply");
+	putchar(10);
 }
 
 void get_victim_mac(
@@ -218,11 +221,9 @@ void get_victim_mac(
 		sizeof(struct libnet_arp_hdr));
 
 	puts("Got Victim's Mac address!!");
-	puts("-----------------------");
-	putchar(10);
-
 	printf("Victim's Mac : ");
 	print_mac((char *)ip_info->sender_mac);
+	puts("-----------------------");
 
 	memcpy(victim_mac,ip_info->sender_mac,6);
 
