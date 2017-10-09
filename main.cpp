@@ -96,6 +96,8 @@ int main(int argc, char * argv[]){
 		victim_mac,
 		my_ip,
 		my_mac);
+
+	
 	
 
 }
@@ -106,8 +108,13 @@ void get_victim_mac(char * mydev,
 	struct libnet_ethernet_hdr * eth_hdr = 0;
 	pcap_t * handler;
 	char packet_s[PACKET_SIZE+1]={};
+	const unsigned char * packet_r=0;
 	struct libnet_arp_hdr * arp_hdr;
 
+
+	putchar(10);
+	puts("-----------------------");
+	puts("Getting Victim's Mac address...");
 
 	if((handler = pcap_open_live(mydev,1000,1,1000,NULL))==NULL){
 		puts("pcap_open_live ERROR!");
@@ -137,17 +144,42 @@ void get_victim_mac(char * mydev,
 	memcpy(ip_info->target_mac,victim_mac,6);
 	inet_pton(AF_INET, victim_ip,&ip_info->target_ip);
 
-	write(1,packet_s,42);
 	if(pcap_sendpacket(handler,(const u_char *)packet_s,42)==-1){
 		puts("pcap_sendpacket Error!");
 		exit(1);
 	}
-	printf("Packet sent\n");
 
+	struct pcap_pkthdr pkthdr;
+	while(1){
+		packet_r = pcap_next(handler,&pkthdr);
+		if(packet_r==NULL){
+			puts("pcap_next Error!");
+			exit(1);
+		}
+		eth_hdr = (struct libnet_ethernet_hdr *)packet_r;
+		arp_hdr = (libnet_arp_hdr *)((char *)eth_hdr + 
+			sizeof(struct libnet_ethernet_hdr));
+		if((eth_hdr->ether_type == htons(ETHERTYPE_ARP)) &&
+			(arp_hdr->ar_op == htons(ARPOP_REPLY))) 
+			break;
+	}
+
+	
+	ip_info = (struct tmp_ip *)((char *)arp_hdr + 
+		sizeof(struct libnet_arp_hdr));
+
+	puts("Got Victim's Mac address!!");
+	puts("-----------------------");
+	putchar(10);
+
+	printf("Victim's Mac : ");
+	print_mac((char *)ip_info->sender_mac);
+
+	memcpy(victim_mac,ip_info->sender_mac,6);
 
 }
 void print_mac(char * mac){
-	printf("%hhx:%hhx:%hhx:%hhx:%hhx:%hhx\n",
+	printf("%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx\n",
 		mac[0],mac[1],mac[2],
 		mac[3],mac[4],mac[5]);
 }
