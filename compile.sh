@@ -1,3 +1,3 @@
 #!/bin/sh
 
-g++ -o main main.cpp -lpcap
+g++ -o send_arp main.cpp -lpcap
