@@ -196,10 +196,12 @@ void get_victim_mac(
 	memcpy(ip_info->target_mac,victim_mac,6);
 	inet_pton(AF_INET, victim_ip,&ip_info->target_ip);
 
-	if(pcap_sendpacket(handler,(const u_char *)packet_s,42)==-1){
-		puts("pcap_sendpacket Error!");
-		exit(1);
-	}
+  for(int i=0;i<10;i++){
+    if(pcap_sendpacket(handler,(const u_char *)packet_s,42)==-1){
+      puts("pcap_sendpacket Error!");
+      exit(1);
+    }
+  }
 
 	struct pcap_pkthdr pkthdr;
 	while(1){
